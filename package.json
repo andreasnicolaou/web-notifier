@@ -1,6 +1,6 @@
 {
   "name": "@andreasnicolaou/browser-notifier",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A lightweight, RxJS-based browser notification library with permission handling, auto-dismiss, delay and event callbacks.",
   "main": "dist/index.js",
   "private": false,
