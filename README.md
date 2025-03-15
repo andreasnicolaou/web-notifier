@@ -9,8 +9,8 @@ A lightweight and flexible web notification library that provides a simple API f
 ## Features
 
 - Show browser notifications with customizable options.
-- Auto-dismiss notifications after a set of time (Optionally).
-- Delay notifications after a set of time (Optionally).
+- Auto-dismiss notifications after a set of time (optional).
+- Delay notifications after a set of time (optional).
 - Handle click, close and permission denied events with callbacks.
 - Gracefully manage notification permissions.
 
@@ -49,7 +49,7 @@ Creates & Displays the notification.
 - **title**: The title of the notification.
 - **options**: Notification options (optional).
 - **callbacks**: Callbacks for notification events (optional).
-  -Returns an Observable that emits the notification instance if successful.
+- Returns an Observable that emits the notification instance if successful.
 
 ```sh
 .dismissAll(): void
