@@ -56,3 +56,8 @@ Creates & Displays the notification.
 ```
 
 Closes all active notifications.
+
+## Learn more about the Notification API
+
+- [Notification API - MDN](https://developer.mozilla.org/en-US/docs/Web/API/Notification)
+- [Browser Compatibility - MDN](https://developer.mozilla.org/en-US/docs/Web/API/Notification#browser_compatibility)
