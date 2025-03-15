@@ -57,6 +57,7 @@
     "typescript": "^5.8.2"
   },
   "keywords": [
+    "browser",
     "web",
     "notifications",
     "rxjs",
