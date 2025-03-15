@@ -1,0 +1,7 @@
+.idea
+/src
+.prettierrc
+.github
+.prettierignore
+eslint.config.mjs
+logo.png

@@ -1,4 +1,3 @@
-
 <p align="center">
   <img src="logo.png" alt="Logo">
 </p>
@@ -30,11 +29,12 @@ const webPushNotifier = new WebPushNotifier({ autoDismiss: 5000 });
 webPushNotifier.show('Hello there!', { body: 'This is a test notification using @andreasnicolaou/browser-notifier.' });
 ```
 
-
 ## API
+
 ```sh
 new WebPushNotifier(globalOptions?: WebPushNotifierOptions, globalCallbacks?: WebPushNotifierCallbacks)
 ```
+
 Creates a new notification handler with optional default settings.
 
 - **globalOptions**: Default notification options.
@@ -43,14 +43,16 @@ Creates a new notification handler with optional default settings.
 ```sh
 .show(title: string, options?: WebPushNotifierOptions, callbacks?: WebPushNotifierCallbacks): Observable<Notification | null>
 ```
+
 Creates & Displays the notification.
 
 - **title**: The title of the notification.
 - **options**: Notification options (optional).
 - **callbacks**: Callbacks for notification events (optional).
--Returns an Observable that emits the notification instance if successful.
+  -Returns an Observable that emits the notification instance if successful.
 
 ```sh
 .dismissAll(): void
 ```
+
 Closes all active notifications.
