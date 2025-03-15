@@ -1,7 +1,7 @@
 {
-  "name": "@andreasnicolaou/browser-notifier",
-  "version": "1.0.1",
-  "description": "A lightweight, RxJS-based browser notification library with permission handling, auto-dismiss, delay and event callbacks.",
+  "name": "@andreasnicolaou/web-notifier",
+  "version": "1.0.2",
+  "description": "A lightweight, RxJS-based web notification library with permission handling, auto-dismiss, delay and event callbacks.",
   "main": "dist/index.js",
   "private": false,
   "types": "dist/types/index.d.ts",
@@ -18,10 +18,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/andreasnicolaou/browser-notifier.git"
+    "url": "https://github.com/andreasnicolaou/web-notifier.git"
   },
   "bugs": {
-    "url": "https://github.com/andreasnicolaou/browser-notifier/issues"
+    "url": "https://github.com/andreasnicolaou/web-notifier/issues"
   },
   "author": "Andreas Nicolaou <anicolaou66@gmail.com>",
   "license": "MIT",
@@ -58,6 +58,7 @@
   },
   "keywords": [
     "browser",
+    "web",
     "notifications",
     "rxjs",
     "push notifications",

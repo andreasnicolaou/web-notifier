@@ -4,11 +4,11 @@
 
 # WebPushNotifier
 
-A lightweight and flexible web notification library that provides a simple API for handling browser notifications using RxJS observables. It allows you to request permission, display notifications, and handle user interactions in a reactive way.
+A lightweight and flexible web notification library that provides a simple API for handling notifications using RxJS observables. It allows you to request permission, display notifications, and handle user interactions in a reactive way.
 
 ## Features
 
-- Show browser notifications with customizable options.
+- Show web notifications with customizable options.
 - Auto-dismiss notifications after a set of time (optional).
 - Delay notifications after a set of time (optional).
 - Handle click, close and permission denied events with callbacks.
@@ -17,16 +17,16 @@ A lightweight and flexible web notification library that provides a simple API f
 ## Installation
 
 ```sh
-npm install @andreasnicolaou/browser-notifier
+npm install @andreasnicolaou/web-notifier
 ```
 
 ## Usage
 
 ```typescript
-import { WebPushNotifier } from '@andreasnicolaou/browser-notifier';
+import { WebPushNotifier } from '@andreasnicolaou/web-notifier';
 
 const webPushNotifier = new WebPushNotifier({ autoDismiss: 5000 });
-webPushNotifier.show('Hello there!', { body: 'This is a test notification using @andreasnicolaou/browser-notifier.' });
+webPushNotifier.show('Hello there!', { body: 'This is a test notification using @andreasnicolaou/web-notifier.' });
 ```
 
 ## API
