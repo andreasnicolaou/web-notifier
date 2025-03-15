@@ -1,6 +1,6 @@
 {
   "name": "@andreasnicolaou/web-notifier",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A lightweight, RxJS-based web notification library with permission handling, auto-dismiss, delay and event callbacks.",
   "main": "dist/index.js",
   "private": false,
