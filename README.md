@@ -20,6 +20,46 @@ A lightweight and flexible web notification library that provides a simple API f
 npm install @andreasnicolaou/web-notifier
 ```
 
+## CDN Usage
+
+You can use the library directly in the browser via CDN. The UMD build exposes the global variable `webNotifier`.
+
+**unpkg CDN (latest, unminified):**
+
+```html
+<script src="https://unpkg.com/@andreasnicolaou/web-notifier/dist/index.umd.js"></script>
+```
+
+**unpkg CDN (latest, minified):**
+
+```html
+<script src="https://unpkg.com/@andreasnicolaou/web-notifier/dist/index.umd.min.js"></script>
+```
+
+**jsDelivr CDN (unminified):**
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/@andreasnicolaou/web-notifier/dist/index.umd.js"></script>
+```
+
+**jsDelivr CDN (minified):**
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/@andreasnicolaou/web-notifier/dist/index.umd.min.js"></script>
+```
+
+### Example: Using in the Browser
+
+```html
+<script src="https://unpkg.com/@andreasnicolaou/web-notifier/dist/index.umd.js"></script>
+<script>
+  // Access the WebPushNotifier class from the global 'webNotifier' object
+  const Notifier = window.webNotifier.WebPushNotifier;
+  const notifier = new Notifier({ autoDismiss: 2000 });
+  notifier.show('Hello from CDN!', { body: 'This is a test notification.' });
+</script>
+```
+
 ## Usage
 
 ```typescript
