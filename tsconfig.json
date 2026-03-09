@@ -11,11 +11,9 @@
     "moduleResolution": "node",
     "types": ["jest", "node"],
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "declaration": true,
-    "declarationDir": "./dist/types"
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*.ts", "**/*.spec.ts"],
-  "exclude": ["node_modules", "dist"],
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts"],
   "lib": ["esnext", "dom"]
 }
