@@ -15,14 +15,19 @@ const compat = new FlatCompat({
 });
 
 export default [
+  {
+    ignores: ['dist/**', 'coverage/**', 'docs/**', 'node_modules/**', '*.config.js', '*.config.mjs'],
+  },
   ...compat.extends('eslint:recommended', 'plugin:@typescript-eslint/recommended', 'plugin:prettier/recommended'),
   {
+    files: ['src/**/*.ts'],
     plugins: {
       '@typescript-eslint': typescriptEslint,
     },
     languageOptions: {
       globals: {
         ...globals.node,
+        ...globals.browser,
       },
       parser: tsParser,
     },

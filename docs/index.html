@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@andreasnicolaou/web-notifier — Live Demo</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔔</text></svg>"
+    />
+    <meta
+      name="description"
+      content="Interactive demo of @andreasnicolaou/web-notifier, a lightweight RxJS + Promise wrapper around the browser Notification API."
+    />
+    <style>
+      :root {
+        --bg: #0d1117;
+        --panel: #161b22;
+        --border: #30363d;
+        --text: #e6edf3;
+        --muted: #8b949e;
+        --accent: #2f81f7;
+        --accent-hover: #4493f8;
+        --green: #3fb950;
+        --red: #f85149;
+        --yellow: #d29922;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+      }
+      .wrap {
+        max-width: 880px;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 4rem;
+      }
+      header {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+      header h1 {
+        font-size: 1.9rem;
+        margin: 0 0 0.35rem;
+      }
+      header p {
+        color: var(--muted);
+        margin: 0;
+      }
+      header code {
+        background: var(--panel);
+        padding: 0.15rem 0.4rem;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+      }
+      .links {
+        margin-top: 0.9rem;
+        display: flex;
+        gap: 0.75rem;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .links a {
+        color: var(--accent);
+        text-decoration: none;
+        font-size: 0.9rem;
+      }
+      .links a:hover {
+        text-decoration: underline;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.25rem;
+      }
+      @media (max-width: 720px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.25rem;
+      }
+      .panel h2 {
+        margin: 0 0 1rem;
+        font-size: 1.05rem;
+      }
+      .status-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+        font-size: 0.92rem;
+      }
+      .badge {
+        font-weight: 600;
+        padding: 0.15rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        border: 1px solid var(--border);
+      }
+      .badge.granted {
+        color: var(--green);
+        border-color: var(--green);
+      }
+      .badge.denied,
+      .badge.unsupported {
+        color: var(--red);
+        border-color: var(--red);
+      }
+      .badge.default {
+        color: var(--yellow);
+        border-color: var(--yellow);
+      }
+      label {
+        display: block;
+        font-size: 0.82rem;
+        color: var(--muted);
+        margin: 0.65rem 0 0.25rem;
+      }
+      input {
+        width: 100%;
+        padding: 0.55rem 0.7rem;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        font-size: 0.9rem;
+      }
+      input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+      .row {
+        display: flex;
+        gap: 0.75rem;
+      }
+      .row > div {
+        flex: 1;
+      }
+      button {
+        cursor: pointer;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text);
+        padding: 0.6rem 0.9rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: 0.15s;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      button.primary:hover {
+        background: var(--accent-hover);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .btn-row {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+      }
+      .log {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.8rem;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.75rem;
+        height: 260px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .log .entry {
+        margin-bottom: 0.3rem;
+        padding-bottom: 0.3rem;
+        border-bottom: 1px dashed var(--border);
+      }
+      .log .t {
+        color: var(--muted);
+      }
+      .log .ev-click {
+        color: var(--accent);
+      }
+      .log .ev-show {
+        color: var(--green);
+      }
+      .log .ev-close {
+        color: var(--yellow);
+      }
+      .log .ev-error,
+      .log .ev-denied {
+        color: var(--red);
+      }
+      .unsupported-note {
+        background: rgba(248, 81, 73, 0.1);
+        border: 1px solid var(--red);
+        color: var(--red);
+        border-radius: 8px;
+        padding: 0.75rem;
+        font-size: 0.85rem;
+        margin-bottom: 1.25rem;
+        display: none;
+      }
+      footer {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.82rem;
+        margin-top: 2.5rem;
+      }
+      footer a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>🔔 web-notifier</h1>
+        <p>Live demo of <code>@andreasnicolaou/web-notifier</code></p>
+        <div class="links">
+          <a href="https://www.npmjs.com/package/@andreasnicolaou/web-notifier">npm</a>
+          <a href="https://github.com/andreasnicolaou/web-notifier">GitHub</a>
+          <a href="https://github.com/andreasnicolaou/web-notifier#readme">Docs</a>
+        </div>
+      </header>
+
+      <div id="unsupported" class="unsupported-note">
+        ⚠️ This browser does not support the Notification API, so the demo can only log events.
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <h2>Compose a notification</h2>
+
+          <div class="status-row">
+            <span>Permission</span>
+            <span id="permBadge" class="badge default">N/A</span>
+          </div>
+          <div class="status-row">
+            <span>Active notifications</span>
+            <span id="activeCount" class="badge">0</span>
+          </div>
+
+          <label for="title">Title</label>
+          <input id="title" value="Hello from web-notifier!" />
+
+          <label for="body">Body</label>
+          <input id="body" value="This notification was shown reactively. 🚀" />
+
+          <label for="icon">Icon URL (optional)</label>
+          <input id="icon" placeholder="https://…/icon.png" />
+
+          <div class="row">
+            <div>
+              <label for="autoDismiss">Auto-dismiss (ms)</label>
+              <input id="autoDismiss" type="number" value="4000" min="0" />
+            </div>
+            <div>
+              <label for="delay">Delay (ms)</label>
+              <input id="delay" type="number" value="0" min="0" />
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button id="requestBtn">Request permission</button>
+            <button id="showBtn" class="primary">Show notification</button>
+            <button id="dismissBtn">Dismiss all</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Event log</h2>
+          <div id="log" class="log"></div>
+          <div class="btn-row">
+            <button id="clearLog">Clear log</button>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <a href="https://github.com/andreasnicolaou/web-notifier">View source on GitHub</a> · MIT © Andreas Nicolaou
+      </footer>
+    </div>
+
+    <!--
+      The UMD build exposes the global `webNotifier`. We load the latest published version from the CDN.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/@andreasnicolaou/web-notifier/dist/index.umd.min.js"></script>
+    <script>
+      (function () {
+        var WebPushNotifier = window.webNotifier && window.webNotifier.WebPushNotifier;
+        var logEl = document.getElementById('log');
+        var permBadge = document.getElementById('permBadge');
+        var activeCountEl = document.getElementById('activeCount');
+
+        function log(message, type) {
+          var entry = document.createElement('div');
+          entry.className = 'entry';
+          var time = new Date().toLocaleTimeString();
+          entry.innerHTML =
+            '<span class="t">[' + time + ']</span> <span class="ev-' + (type || '') + '">' + message + '</span>';
+          logEl.prepend(entry);
+        }
+
+        if (!WebPushNotifier || !WebPushNotifier.isSupported()) {
+          document.getElementById('unsupported').style.display = 'block';
+          if (!WebPushNotifier) {
+            log('Failed to load the library from the CDN.', 'error');
+            return;
+          }
+        }
+
+        var notifier = new WebPushNotifier(
+          {},
+          {
+            onclick: function () {
+              log('onclick — user clicked the notification', 'click');
+              refresh();
+            },
+            onshow: function () {
+              log('onshow — notification displayed', 'show');
+              refresh();
+            },
+            onclose: function () {
+              log('onclose — notification closed', 'close');
+              refresh();
+            },
+            onerror: function (err) {
+              log('onerror — ' + (err && err.message ? err.message : err), 'error');
+            },
+            onPermissionDenied: function () {
+              log('onPermissionDenied — permission was denied', 'denied');
+              refresh();
+            },
+          }
+        );
+
+        function refresh() {
+          var perm = notifier.permission;
+          permBadge.textContent = perm;
+          permBadge.className = 'badge ' + perm;
+          activeCountEl.textContent = notifier.activeCount;
+        }
+
+        function num(id) {
+          var v = parseInt(document.getElementById(id).value, 10);
+          return isNaN(v) ? 0 : v;
+        }
+
+        document.getElementById('requestBtn').addEventListener('click', function () {
+          notifier.requestPermission().subscribe({
+            next: function (p) {
+              log('requestPermission → ' + p, p === 'granted' ? 'show' : 'denied');
+              refresh();
+            },
+            error: function (e) {
+              log('requestPermission error — ' + e.message, 'error');
+            },
+          });
+        });
+
+        document.getElementById('showBtn').addEventListener('click', function () {
+          var icon = document.getElementById('icon').value.trim();
+          var options = {
+            body: document.getElementById('body').value,
+            autoDismiss: num('autoDismiss'),
+            delay: num('delay'),
+          };
+          if (icon) options.icon = icon;
+
+          // showAsync returns a Promise — the demo's preferred, RxJS-free entry point.
+          notifier
+            .showAsync(document.getElementById('title').value, options)
+            .then(function (n) {
+              log(
+                n ? 'showAsync resolved with a Notification' : 'showAsync resolved null (not granted)',
+                n ? 'show' : 'denied'
+              );
+              refresh();
+            })
+            .catch(function (e) {
+              log('showAsync rejected — ' + e.message, 'error');
+            });
+        });
+
+        document.getElementById('dismissBtn').addEventListener('click', function () {
+          notifier.dismissAll();
+          log('dismissAll() — closed all active notifications', 'close');
+          refresh();
+        });
+
+        document.getElementById('clearLog').addEventListener('click', function () {
+          logEl.innerHTML = '';
+        });
+
+        refresh();
+        log('Demo ready. Click "Request permission" to begin.', 'show');
+      })();
+    </script>
+  </body>
+</html>

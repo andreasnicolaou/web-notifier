@@ -4,10 +4,15 @@ import terser from '@rollup/plugin-terser';
 import typescript from '@rollup/plugin-typescript';
 import dts from 'rollup-plugin-dts';
 
+// Keep peer/runtime dependencies external for the module builds so consumers dedupe a
+// single copy of RxJS instead of bundling it (smaller install, no duplicate operators).
+const external = [/^rxjs(\/.*)?$/];
+
 export default [
   // ESM build
   {
     input: 'src/index.ts',
+    external,
     output: {
       file: 'dist/index.js',
       format: 'es',
@@ -26,6 +31,7 @@ export default [
   // CommonJS build
   {
     input: 'src/index.ts',
+    external,
     output: {
       file: 'dist/index.cjs',
       format: 'cjs',

@@ -1,14 +1,28 @@
-import { from, Observable, of, throwError } from 'rxjs';
-import { catchError, delay, switchMap } from 'rxjs/operators';
+import { firstValueFrom, from, Observable, of, ReplaySubject, Subscription, throwError, timer } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 
-export interface WebPushNotifierOptions extends NotificationOptions {
-  autoDismiss?: number; // Time in milliseconds to auto-dismiss the notification
-  delay?: number; // Time in milliseconds to delay the notification
+interface PendingNotification {
+  subject: ReplaySubject<Notification | null>;
+  subscription?: Subscription;
 }
 
-interface WebPushNotifierCallbacks {
+export interface WebPushNotifierOptions extends NotificationOptions {
+  /** Time in milliseconds after which the notification is automatically closed. */
+  autoDismiss?: number;
+  /** Time in milliseconds to wait before the notification is shown. */
+  delay?: number;
+}
+
+export interface WebPushNotifierCallbacks {
+  /** Invoked when the user clicks the notification. */
   onclick?: (notification: Notification) => void;
+  /** Invoked when the notification is closed (by the user, autoDismiss or dismissAll). */
   onclose?: (notification: Notification) => void;
+  /** Invoked when the notification fails to display. */
+  onerror?: (error: unknown) => void;
+  /** Invoked when the notification is shown. */
+  onshow?: (notification: Notification) => void;
+  /** Invoked when permission is (or has already been) denied. */
   onPermissionDenied?: () => void;
 }
 
@@ -17,6 +31,7 @@ export class WebPushNotifier {
   private readonly globalCallbacks: WebPushNotifierCallbacks;
   private readonly globalOptions: WebPushNotifierOptions;
   private readonly messageError = 'This browser does not support notifications.';
+  private readonly pending = new Set<PendingNotification>();
 
   /**
    * Constructs a new WebPushNotifier instance with optional global settings.
@@ -30,9 +45,34 @@ export class WebPushNotifier {
     this.globalOptions = globalOptions;
     this.globalCallbacks = globalCallbacks;
 
-    if (!('Notification' in window)) {
+    if (!WebPushNotifier.isSupported()) {
       console.warn(this.messageError);
     }
+  }
+
+  /**
+   * Indicates whether the current environment supports the Notification API.
+   * @returns boolean
+   * @memberof WebPushNotifier
+   */
+  public static isSupported(): boolean {
+    return typeof window !== 'undefined' && 'Notification' in window && typeof window.Notification !== 'undefined';
+  }
+
+  /**
+   * The number of notifications currently being tracked as active.
+   * @memberof WebPushNotifier
+   */
+  public get activeCount(): number {
+    return this.activeNotifications.length;
+  }
+
+  /**
+   * The current notification permission, or `'unsupported'` when the API is unavailable.
+   * @memberof WebPushNotifier
+   */
+  public get permission(): NotificationPermission | 'unsupported' {
+    return WebPushNotifier.isSupported() ? Notification.permission : 'unsupported';
   }
 
   /**
@@ -40,17 +80,59 @@ export class WebPushNotifier {
    * @memberof WebPushNotifier
    */
   public dismissAll(): void {
+    // Cancel notifications that are still pending (e.g. waiting on a `delay`) before they appear,
+    // and resolve any awaiting subscribers with `null` instead of leaving them hanging.
+    this.pending.forEach((entry) => {
+      entry.subscription?.unsubscribe();
+      entry.subject.next(null);
+      entry.subject.complete();
+    });
+    this.pending.clear();
     this.activeNotifications.forEach((notification) => notification.close());
     this.activeNotifications = [];
   }
 
   /**
+   * Indicates whether the current environment supports the Notification API.
+   * @returns boolean
+   * @memberof WebPushNotifier
+   */
+  public isSupported(): boolean {
+    return WebPushNotifier.isSupported();
+  }
+
+  /**
+   * Requests notification permission from the user. If permission has already been
+   * granted or denied, the existing value is returned without prompting again.
+   * @returns An Observable emitting the resulting permission.
+   * @memberof WebPushNotifier
+   */
+  public requestPermission(): Observable<NotificationPermission> {
+    if (!WebPushNotifier.isSupported()) {
+      console.warn(this.messageError);
+      return throwError(() => new Error(this.messageError));
+    }
+    if (Notification.permission === 'granted' || Notification.permission === 'denied') {
+      return of(Notification.permission);
+    }
+    return from(Notification.requestPermission()).pipe(
+      catchError((error) => {
+        console.error('Error requesting notification permission:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
    * Shows a notification with the given title, options, and callbacks.
-   * Returns an Observable that emits the notification instance if successful.
-   * @param title
-   * @param [options]
-   * @param [callbacks]
-   * @returns show
+   * Returns a shared Observable that emits the notification instance if successful, or `null`
+   * when permission is not granted. The notification is created exactly once regardless of
+   * how many times the returned Observable is subscribed to, and a notification that is still
+   * pending (e.g. waiting on a `delay`) is cancelled by {@link dismissAll}.
+   * @param title - The title of the notification
+   * @param [options] - The options of the notification
+   * @param [callbacks] - The callbacks of the notification
+   * @returns Observable<Notification | null>
    * @memberof WebPushNotifier
    */
   public show(
@@ -58,18 +140,51 @@ export class WebPushNotifier {
     options: WebPushNotifierOptions = Object.create(Object.prototype),
     callbacks: WebPushNotifierCallbacks = Object.create(Object.prototype)
   ): Observable<Notification | null> {
-    if (!('Notification' in window)) {
+    if (!WebPushNotifier.isSupported()) {
       console.warn(this.messageError);
       return throwError(() => new Error(this.messageError));
     }
 
-    const notification$ = this.handleNotification(
+    // A ReplaySubject lets the notification be created exactly once (eagerly, so fire-and-forget
+    // works) while replaying the result to any number of later subscribers. The driving
+    // subscription is tracked so it can be cancelled by `dismissAll` while still pending.
+    const entry: PendingNotification = { subject: new ReplaySubject<Notification | null>(1) };
+    this.pending.add(entry);
+
+    entry.subscription = this.handleNotification(
       title,
       { ...this.globalOptions, ...options },
       { ...this.globalCallbacks, ...callbacks }
-    );
-    notification$.subscribe();
-    return notification$;
+    ).subscribe({
+      next: (notification) => entry.subject.next(notification),
+      error: (error) => {
+        this.pending.delete(entry);
+        entry.subject.error(error);
+      },
+      complete: () => {
+        this.pending.delete(entry);
+        entry.subject.complete();
+      },
+    });
+
+    return entry.subject.asObservable();
+  }
+
+  /**
+   * Promise-based variant of {@link show}. Resolves with the notification instance if
+   * successful, or `null` when permission is not granted.
+   * @param title - The title of the notification
+   * @param [options] - The options of the notification
+   * @param [callbacks] - The callbacks of the notification
+   * @returns Promise<Notification | null>
+   * @memberof WebPushNotifier
+   */
+  public showAsync(
+    title: string,
+    options: WebPushNotifierOptions = Object.create(Object.prototype),
+    callbacks: WebPushNotifierCallbacks = Object.create(Object.prototype)
+  ): Promise<Notification | null> {
+    return firstValueFrom(this.show(title, options, callbacks));
   }
 
   /**
@@ -89,32 +204,37 @@ export class WebPushNotifier {
       const notification = new Notification(title, options);
       this.activeNotifications.push(notification);
 
-      if (callbacks.onclick) {
-        notification.onclick = (): void => {
-          callbacks.onclick?.(notification);
-          if (typeof window.focus === 'function') {
-            window.focus();
-          }
-        };
+      notification.onclick = (): void => {
+        callbacks.onclick?.(notification);
+        if (typeof window !== 'undefined' && typeof window.focus === 'function') {
+          window.focus();
+        }
+      };
+
+      notification.onclose = (): void => {
+        callbacks.onclose?.(notification);
+        this.removeActive(notification);
+      };
+
+      if (callbacks.onshow) {
+        notification.onshow = (): void => callbacks.onshow?.(notification);
       }
 
-      if (callbacks.onclose) {
-        notification.onclose = (): void => {
-          callbacks.onclose?.(notification);
-          this.activeNotifications = this.activeNotifications.filter((n) => n !== notification);
-        };
+      if (callbacks.onerror) {
+        notification.onerror = (): void => callbacks.onerror?.(new Error('Notification failed to display.'));
       }
 
       if (options.autoDismiss && options.autoDismiss > 0) {
         setTimeout(() => {
           notification.close();
-          this.activeNotifications = this.activeNotifications.filter((n) => n !== notification);
+          this.removeActive(notification);
         }, options.autoDismiss);
       }
 
       return notification;
     } catch (error) {
       console.error('Error showing notification:', error);
+      callbacks.onerror?.(error);
       return null;
     }
   }
@@ -132,20 +252,24 @@ export class WebPushNotifier {
     options: WebPushNotifierOptions,
     callbacks: WebPushNotifierCallbacks
   ): Observable<Notification | null> {
-    if (typeof Notification === 'undefined') {
+    if (!WebPushNotifier.isSupported()) {
       console.warn(this.messageError);
       return of(null);
     }
+    const create = (): Observable<Notification | null> => {
+      const wait = options.delay && options.delay > 0 ? options.delay : 0;
+      return (wait > 0 ? timer(wait) : of(0)).pipe(map(() => this.createNotification(title, options, callbacks)));
+    };
     return of(Notification.permission).pipe(
       switchMap((permission: NotificationPermission) => {
         if (permission === 'granted') {
-          return of(this.createNotification(title, options, callbacks)).pipe(delay(options.delay ?? 0));
+          return create();
         }
         if (permission !== 'denied') {
           return from(Notification.requestPermission()).pipe(
             switchMap((newPermission) => {
               if (newPermission === 'granted') {
-                return of(this.createNotification(title, options, callbacks)).pipe(delay(options.delay ?? 0));
+                return create();
               }
               callbacks.onPermissionDenied?.();
               return of(null);
@@ -160,5 +284,14 @@ export class WebPushNotifier {
         return throwError(() => error);
       })
     );
+  }
+
+  /**
+   * Removes a notification from the active list.
+   * @param notification - The notification to remove
+   * @memberof WebPushNotifier
+   */
+  private removeActive(notification: Notification): void {
+    this.activeNotifications = this.activeNotifications.filter((n) => n !== notification);
   }
 }
