@@ -146,6 +146,27 @@ describe('WebPushNotifier', () => {
     jest.useRealTimers();
   });
 
+  it('should cancel pending delayed notifications when dismissAll is called', () => {
+    jest.useFakeTimers();
+    global.Notification.permission = 'granted';
+    const notifier = new WebPushNotifier();
+    notifier.show('Test Title', { body: 'Test Body', delay: 1000 }).subscribe();
+    expect(mockNotificationInstances).toHaveLength(0);
+    notifier.dismissAll();
+    jest.advanceTimersByTime(1000);
+    expect(mockNotificationInstances).toHaveLength(0);
+    jest.useRealTimers();
+  });
+
+  it('should resolve null from showAsync when a pending delayed notification is dismissed', async () => {
+    global.Notification.permission = 'granted';
+    const notifier = new WebPushNotifier();
+    const promise = notifier.showAsync('Test Title', { body: 'Test Body', delay: 1000 });
+    notifier.dismissAll();
+    await expect(promise).resolves.toBeNull();
+    expect(mockNotificationInstances).toHaveLength(0);
+  });
+
   it('should dismiss all active notifications', () => {
     global.Notification.permission = 'granted';
     const notifier = new WebPushNotifier();

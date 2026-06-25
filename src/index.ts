@@ -1,5 +1,10 @@
-import { firstValueFrom, from, Observable, of, throwError, timer } from 'rxjs';
-import { catchError, map, shareReplay, switchMap } from 'rxjs/operators';
+import { firstValueFrom, from, Observable, of, ReplaySubject, Subscription, throwError, timer } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
+
+interface PendingNotification {
+  subject: ReplaySubject<Notification | null>;
+  subscription?: Subscription;
+}
 
 export interface WebPushNotifierOptions extends NotificationOptions {
   /** Time in milliseconds after which the notification is automatically closed. */
@@ -26,6 +31,7 @@ export class WebPushNotifier {
   private readonly globalCallbacks: WebPushNotifierCallbacks;
   private readonly globalOptions: WebPushNotifierOptions;
   private readonly messageError = 'This browser does not support notifications.';
+  private readonly pending = new Set<PendingNotification>();
 
   /**
    * Constructs a new WebPushNotifier instance with optional global settings.
@@ -74,6 +80,14 @@ export class WebPushNotifier {
    * @memberof WebPushNotifier
    */
   public dismissAll(): void {
+    // Cancel notifications that are still pending (e.g. waiting on a `delay`) before they appear,
+    // and resolve any awaiting subscribers with `null` instead of leaving them hanging.
+    this.pending.forEach((entry) => {
+      entry.subscription?.unsubscribe();
+      entry.subject.next(null);
+      entry.subject.complete();
+    });
+    this.pending.clear();
     this.activeNotifications.forEach((notification) => notification.close());
     this.activeNotifications = [];
   }
@@ -113,7 +127,8 @@ export class WebPushNotifier {
    * Shows a notification with the given title, options, and callbacks.
    * Returns a shared Observable that emits the notification instance if successful, or `null`
    * when permission is not granted. The notification is created exactly once regardless of
-   * how many times the returned Observable is subscribed to.
+   * how many times the returned Observable is subscribed to, and a notification that is still
+   * pending (e.g. waiting on a `delay`) is cancelled by {@link dismissAll}.
    * @param title - The title of the notification
    * @param [options] - The options of the notification
    * @param [callbacks] - The callbacks of the notification
@@ -130,16 +145,29 @@ export class WebPushNotifier {
       return throwError(() => new Error(this.messageError));
     }
 
-    const notification$ = this.handleNotification(
+    // A ReplaySubject lets the notification be created exactly once (eagerly, so fire-and-forget
+    // works) while replaying the result to any number of later subscribers. The driving
+    // subscription is tracked so it can be cancelled by `dismissAll` while still pending.
+    const entry: PendingNotification = { subject: new ReplaySubject<Notification | null>(1) };
+    this.pending.add(entry);
+
+    entry.subscription = this.handleNotification(
       title,
       { ...this.globalOptions, ...options },
       { ...this.globalCallbacks, ...callbacks }
-    ).pipe(shareReplay({ bufferSize: 1, refCount: false }));
+    ).subscribe({
+      next: (notification) => entry.subject.next(notification),
+      error: (error) => {
+        this.pending.delete(entry);
+        entry.subject.error(error);
+      },
+      complete: () => {
+        this.pending.delete(entry);
+        entry.subject.complete();
+      },
+    });
 
-    // Eagerly trigger creation exactly once so fire-and-forget usage works. The result is
-    // replayed to any later subscribers, so subscribing never produces a duplicate notification.
-    notification$.subscribe({ error: () => undefined });
-    return notification$;
+    return entry.subject.asObservable();
   }
 
   /**
