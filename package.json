@@ -1,6 +1,6 @@
 {
   "name": "@andreasnicolaou/web-notifier",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "A lightweight, RxJS-based wrapper around the browser Notification API with permission handling, auto-dismiss, delay, a Promise-based API and event callbacks.",
   "main": "dist/index.cjs",
   "module": "dist/index.js",

@@ -264,8 +264,8 @@
             <span id="permBadge" class="badge default">N/A</span>
           </div>
           <div class="status-row">
-            <span>Active notifications</span>
-            <span id="activeCount" class="badge">0</span>
+            <span>Shown this session</span>
+            <span id="shownCount" class="badge">0</span>
           </div>
 
           <label for="title">Title</label>
@@ -296,9 +296,8 @@
 
           <p class="hint">
             Tip: your operating system decides how many notifications are visible at once — it usually shows them one at
-            a time and queues the rest. The library still tracks every one it created (see the active count), and
-            <strong>Dismiss all</strong> closes them. With auto-dismiss set above 0, each notification closes itself
-            after that delay.
+            a time and queues the rest. Use <strong>Dismiss all</strong> to close every notification this instance
+            created, or set auto-dismiss above 0 to have each one close itself after that delay.
           </p>
         </div>
 
@@ -325,7 +324,7 @@
         var WebPushNotifier = window.webNotifier && window.webNotifier.WebPushNotifier;
         var logEl = document.getElementById('log');
         var permBadge = document.getElementById('permBadge');
-        var activeCountEl = document.getElementById('activeCount');
+        var shownCountEl = document.getElementById('shownCount');
 
         function log(message, type) {
           var entry = document.createElement('div');
@@ -373,7 +372,6 @@
           var perm = notifier.permission;
           permBadge.textContent = perm;
           permBadge.className = 'badge ' + perm;
-          activeCountEl.textContent = notifier.activeCount;
         }
 
         function num(id) {
@@ -404,13 +402,16 @@
           if (icon) options.icon = icon;
 
           // Make each notification distinct so the OS doesn't visually merge identical ones.
-          shownCount += 1;
-          var title = document.getElementById('title').value + ' (#' + shownCount + ')';
+          var title = document.getElementById('title').value + ' (#' + (shownCount + 1) + ')';
 
           // showAsync returns a Promise — the demo's preferred, RxJS-free entry point.
           notifier
             .showAsync(title, options)
             .then(function (n) {
+              if (n) {
+                shownCount += 1;
+                shownCountEl.textContent = shownCount;
+              }
               log(
                 n ? 'showAsync resolved with a Notification' : 'showAsync resolved null (not granted)',
                 n ? 'show' : 'denied'

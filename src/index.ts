@@ -28,6 +28,7 @@ export interface WebPushNotifierCallbacks {
 
 export class WebPushNotifier {
   private activeNotifications: Notification[] = [];
+  private readonly dismissTimers = new Map<Notification, ReturnType<typeof setTimeout>>();
   private readonly globalCallbacks: WebPushNotifierCallbacks;
   private readonly globalOptions: WebPushNotifierOptions;
   private readonly messageError = 'This browser does not support notifications.';
@@ -88,6 +89,8 @@ export class WebPushNotifier {
       entry.subject.complete();
     });
     this.pending.clear();
+    this.dismissTimers.forEach((timer) => clearTimeout(timer));
+    this.dismissTimers.clear();
     this.activeNotifications.forEach((notification) => notification.close());
     this.activeNotifications = [];
   }
@@ -115,7 +118,7 @@ export class WebPushNotifier {
     if (Notification.permission === 'granted' || Notification.permission === 'denied') {
       return of(Notification.permission);
     }
-    return from(Notification.requestPermission()).pipe(
+    return from(this.requestBrowserPermission()).pipe(
       catchError((error) => {
         console.error('Error requesting notification permission:', error);
         return throwError(() => error);
@@ -225,10 +228,11 @@ export class WebPushNotifier {
       }
 
       if (options.autoDismiss && options.autoDismiss > 0) {
-        setTimeout(() => {
+        const timer = setTimeout(() => {
           notification.close();
           this.removeActive(notification);
         }, options.autoDismiss);
+        this.dismissTimers.set(notification, timer);
       }
 
       return notification;
@@ -266,7 +270,7 @@ export class WebPushNotifier {
           return create();
         }
         if (permission !== 'denied') {
-          return from(Notification.requestPermission()).pipe(
+          return from(this.requestBrowserPermission()).pipe(
             switchMap((newPermission) => {
               if (newPermission === 'granted') {
                 return create();
@@ -292,6 +296,30 @@ export class WebPushNotifier {
    * @memberof WebPushNotifier
    */
   private removeActive(notification: Notification): void {
+    const timer = this.dismissTimers.get(notification);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      this.dismissTimers.delete(notification);
+    }
     this.activeNotifications = this.activeNotifications.filter((n) => n !== notification);
+  }
+
+  /**
+   * Requests browser permission, normalising the modern Promise-based API and the legacy
+   * callback-only form (e.g. older Safari, where `requestPermission()` returns `undefined`).
+   * @returns Promise<NotificationPermission>
+   * @memberof WebPushNotifier
+   */
+  private requestBrowserPermission(): Promise<NotificationPermission> {
+    return new Promise<NotificationPermission>((resolve, reject) => {
+      try {
+        const result = Notification.requestPermission((permission) => resolve(permission));
+        if (result && typeof result.then === 'function') {
+          result.then(resolve, reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 }

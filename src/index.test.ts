@@ -135,6 +135,47 @@ describe('WebPushNotifier', () => {
     jest.useRealTimers();
   });
 
+  it('should cancel the auto-dismiss timer when the notification is closed early', () => {
+    jest.useFakeTimers();
+    global.Notification.permission = 'granted';
+    const notifier = new WebPushNotifier({ autoDismiss: 5000 });
+    notifier.show('Test Title', { body: 'Test Body' }).subscribe();
+    const instance = mockNotificationInstances[0];
+    // The user (or the OS) closes it before the auto-dismiss timer fires.
+    instance.onclose();
+    jest.advanceTimersByTime(5000);
+    // The timer was cancelled, so the library does not call close() a second time.
+    expect(instance.close).not.toHaveBeenCalled();
+    jest.useRealTimers();
+  });
+
+  it('should clear auto-dismiss timers on dismissAll without closing twice', () => {
+    jest.useFakeTimers();
+    global.Notification.permission = 'granted';
+    const notifier = new WebPushNotifier({ autoDismiss: 5000 });
+    notifier.show('Test Title', { body: 'Test Body' }).subscribe();
+    const instance = mockNotificationInstances[0];
+    notifier.dismissAll();
+    expect(instance.close).toHaveBeenCalledTimes(1);
+    jest.advanceTimersByTime(5000);
+    // The pending auto-dismiss timer was cleared, so close() is not invoked again.
+    expect(instance.close).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
+  });
+
+  it('should support the legacy callback-based requestPermission', (done) => {
+    global.Notification.permission = 'default';
+    // Legacy form: only the callback delivers the result; the call itself returns undefined.
+    global.Notification.requestPermission = jest.fn((cb: (p: string) => void) => {
+      cb('granted');
+    });
+    const notifier = new WebPushNotifier();
+    notifier.requestPermission().subscribe((permission) => {
+      expect(permission).toBe('granted');
+      done();
+    });
+  });
+
   it('should delay creating the notification when the delay option is set', () => {
     jest.useFakeTimers();
     global.Notification.permission = 'granted';
