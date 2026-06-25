@@ -178,6 +178,19 @@
         flex-wrap: wrap;
         margin-top: 1rem;
       }
+      .hint {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin: 1rem 0 0;
+        line-height: 1.45;
+      }
+      .hint code {
+        font-size: 0.78rem;
+        background: var(--bg);
+        padding: 0.05rem 0.3rem;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+      }
       .log {
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         font-size: 0.8rem;
@@ -258,8 +271,8 @@
             <span id="permBadge" class="badge default">N/A</span>
           </div>
           <div class="status-row">
-            <span>Active notifications</span>
-            <span id="activeCount" class="badge">0</span>
+            <span>Shown this session</span>
+            <span id="shownCount" class="badge">0</span>
           </div>
 
           <label for="title">Title</label>
@@ -273,8 +286,8 @@
 
           <div class="row">
             <div>
-              <label for="autoDismiss">Auto-dismiss (ms)</label>
-              <input id="autoDismiss" type="number" value="4000" min="0" />
+              <label for="autoDismiss">Auto-dismiss (ms, 0 = off)</label>
+              <input id="autoDismiss" type="number" value="0" min="0" />
             </div>
             <div>
               <label for="delay">Delay (ms)</label>
@@ -287,6 +300,12 @@
             <button id="showBtn" class="primary">Show notification</button>
             <button id="dismissBtn">Dismiss all</button>
           </div>
+
+          <p class="hint">
+            Tip: your operating system decides how many notifications are visible at once — it usually shows them one at
+            a time and queues the rest. Use <strong>Dismiss all</strong> to close every notification this instance
+            created, or set auto-dismiss above 0 to have each one close itself after that delay.
+          </p>
         </div>
 
         <div class="panel">
@@ -312,7 +331,7 @@
         var WebPushNotifier = window.webNotifier && window.webNotifier.WebPushNotifier;
         var logEl = document.getElementById('log');
         var permBadge = document.getElementById('permBadge');
-        var activeCountEl = document.getElementById('activeCount');
+        var shownCountEl = document.getElementById('shownCount');
 
         function log(message, type) {
           var entry = document.createElement('div');
@@ -360,7 +379,6 @@
           var perm = notifier.permission;
           permBadge.textContent = perm;
           permBadge.className = 'badge ' + perm;
-          activeCountEl.textContent = notifier.activeCount;
         }
 
         function num(id) {
@@ -380,6 +398,7 @@
           });
         });
 
+        var shownCount = 0;
         document.getElementById('showBtn').addEventListener('click', function () {
           var icon = document.getElementById('icon').value.trim();
           var options = {
@@ -389,10 +408,17 @@
           };
           if (icon) options.icon = icon;
 
+          // Make each notification distinct so the OS doesn't visually merge identical ones.
+          var title = document.getElementById('title').value + ' (#' + (shownCount + 1) + ')';
+
           // showAsync returns a Promise — the demo's preferred, RxJS-free entry point.
           notifier
-            .showAsync(document.getElementById('title').value, options)
+            .showAsync(title, options)
             .then(function (n) {
+              if (n) {
+                shownCount += 1;
+                shownCountEl.textContent = shownCount;
+              }
               log(
                 n ? 'showAsync resolved with a Notification' : 'showAsync resolved null (not granted)',
                 n ? 'show' : 'denied'

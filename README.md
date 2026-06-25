@@ -158,6 +158,19 @@ Extends the native [`NotificationOptions`](https://developer.mozilla.org/en-US/d
 | `onerror`            | `(error: unknown) => void`             | The notification fails to display.          |
 | `onPermissionDenied` | `() => void`                           | Permission is (or has already been) denied. |
 
+## Notes & limitations
+
+These come from the underlying Notification API, not from this library:
+
+- **The OS controls display.** Your operating system decides how many notifications are visible at
+  once and may queue or coalesce them — that is expected, not a bug.
+- **`activeCount` / `dismissAll` are best-effort.** They track notifications this instance created
+  and was told were closed. Some browsers (notably Chrome on Windows) fire the `close` event
+  unreliably, so a notification the user closes from the OS may remain counted until you call
+  `dismissAll()`. For deterministic cleanup, use the `autoDismiss` option — the library closes those
+  itself and updates its tracking regardless of the `close` event.
+- **Permission must be requested from a user gesture** (e.g. a click handler) in modern browsers.
+
 ## Learn more about the Notification API
 
 - [Notification API - MDN](https://developer.mozilla.org/en-US/docs/Web/API/Notification)
