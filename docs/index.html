@@ -178,6 +178,12 @@
         flex-wrap: wrap;
         margin-top: 1rem;
       }
+      .hint {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin: 1rem 0 0;
+        line-height: 1.45;
+      }
       .log {
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         font-size: 0.8rem;
@@ -273,8 +279,8 @@
 
           <div class="row">
             <div>
-              <label for="autoDismiss">Auto-dismiss (ms)</label>
-              <input id="autoDismiss" type="number" value="4000" min="0" />
+              <label for="autoDismiss">Auto-dismiss (ms, 0 = off)</label>
+              <input id="autoDismiss" type="number" value="0" min="0" />
             </div>
             <div>
               <label for="delay">Delay (ms)</label>
@@ -287,6 +293,13 @@
             <button id="showBtn" class="primary">Show notification</button>
             <button id="dismissBtn">Dismiss all</button>
           </div>
+
+          <p class="hint">
+            Tip: your operating system decides how many notifications are visible at once — it usually shows them one at
+            a time and queues the rest. The library still tracks every one it created (see the active count), and
+            <strong>Dismiss all</strong> closes them. With auto-dismiss set above 0, each notification closes itself
+            after that delay.
+          </p>
         </div>
 
         <div class="panel">
@@ -380,6 +393,7 @@
           });
         });
 
+        var shownCount = 0;
         document.getElementById('showBtn').addEventListener('click', function () {
           var icon = document.getElementById('icon').value.trim();
           var options = {
@@ -389,9 +403,13 @@
           };
           if (icon) options.icon = icon;
 
+          // Make each notification distinct so the OS doesn't visually merge identical ones.
+          shownCount += 1;
+          var title = document.getElementById('title').value + ' (#' + shownCount + ')';
+
           // showAsync returns a Promise — the demo's preferred, RxJS-free entry point.
           notifier
-            .showAsync(document.getElementById('title').value, options)
+            .showAsync(title, options)
             .then(function (n) {
               log(
                 n ? 'showAsync resolved with a Notification' : 'showAsync resolved null (not granted)',
